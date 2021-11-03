@@ -1,12 +1,12 @@
 package org.greenrobot.eventbusperf.jay.eventbuskotlin
 
+import android.app.Activity
 import android.os.Bundle
 import android.view.View
-import androidx.appcompat.app.AppCompatActivity
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbusperf.R
 
-class EmptyActivity : AppCompatActivity() {
+class EmptyActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

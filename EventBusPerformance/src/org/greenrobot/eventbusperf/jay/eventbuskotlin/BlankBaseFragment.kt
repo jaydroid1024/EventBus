@@ -1,8 +1,8 @@
 package org.greenrobot.eventbusperf.jay.eventbuskotlin
 
+import android.app.Fragment
 import android.util.Log
 import android.widget.Toast
-import androidx.fragment.app.Fragment
 import org.greenrobot.eventbus.EventBus
 
 abstract class BlankBaseFragment : Fragment() {
@@ -20,7 +20,9 @@ abstract class BlankBaseFragment : Fragment() {
     open fun handleEvent(event: SampleEvent) {
         val className = this::class.simpleName
         val message = "#handleEvent: called for " + event::class.simpleName
-        Toast.makeText(context, className + message, Toast.LENGTH_SHORT).show()
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            Toast.makeText(context, className + message, Toast.LENGTH_SHORT).show()
+        }
         Log.d(className, message)
     }
 
