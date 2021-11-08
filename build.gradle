@@ -1,11 +1,37 @@
 buildscript {
     ext {
+        kotlin_version = '1.4.30'
         _compileSdkVersion = 26 // When updating, don't forget to adjust .travis.yml.
+    }
+    repositories {
+        //central
+        maven { url 'https://maven.aliyun.com/repository/central' }
+        //jcenter&public
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        //google
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        //gradle-plugin
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        jcenter()
+        mavenCentral()
+        google()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.5.4'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.4.30'
     }
 }
 
 allprojects {
     repositories {
+        //central
+        maven { url 'https://maven.aliyun.com/repository/central' }
+        //jcenter&public
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        //google
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        //gradle-plugin
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
         jcenter()
         mavenCentral()
         google()

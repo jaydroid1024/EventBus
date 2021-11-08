@@ -15,6 +15,8 @@
  */
 package org.greenrobot.eventbus.annotationprocessor;
 
+import static net.ltgt.gradle.incap.IncrementalAnnotationProcessorType.AGGREGATING;
+
 import net.ltgt.gradle.incap.IncrementalAnnotationProcessor;
 
 import org.greenrobot.eventbus.Subscribe;
@@ -48,10 +50,14 @@ import javax.tools.JavaFileObject;
 
 import de.greenrobot.common.ListMap;
 
-
-import static net.ltgt.gradle.incap.IncrementalAnnotationProcessorType.AGGREGATING;
-
 /**
+ * 收集 Subscriber 注解，生成订阅者索引文件
+ * 注解处理器参数：
+ * eventBusIndex：订阅者索引文件全类名
+ * verbose：
+ * 增量编译：支持
+ *
+ * 是一个聚合处理器，因为它根据找到的带有 @Subscriber 注释的元素写入单个文件，即订阅者索引文件
  * Is an aggregating processor as it writes a single file, the subscriber index file,
  * based on found elements with the @Subscriber annotation.
  */
@@ -62,8 +68,13 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
     public static final String OPTION_EVENT_BUS_INDEX = "eventBusIndex";
     public static final String OPTION_VERBOSE = "verbose";
 
+    //this(new HashMap<K, List<V>>(), false);
+    //threadSafeLists ? new CopyOnWriteArrayList<V>() : new ArrayList<V>();
+    //key 是obj value 为 list<obj> 的数据结构
+    //找到一个类的订阅者方法（没有超类）。<类，类中标注了Subscriber的方法>
     /** Found subscriber methods for a class (without superclasses). */
     private final ListMap<TypeElement, ExecutableElement> methodsByClass = new ListMap<>();
+    //对索引类不可访问的降级为反射调用观察者类，这里收集不可访问的观察者类
     private final Set<TypeElement> classesToSkip = new HashSet<>();
 
     private boolean writerRoundDone;
@@ -75,18 +86,29 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
         return SourceVersion.latest();
     }
 
+    /**
+     *
+     * @param annotations 标注了 Subscribe
+     * @param env 处理器上下文环境
+     * @return
+     */
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment env) {
         Messager messager = processingEnv.getMessager();
         try {
+            //处理器参数
             String index = processingEnv.getOptions().get(OPTION_EVENT_BUS_INDEX);
             if (index == null) {
                 messager.printMessage(Diagnostic.Kind.ERROR, "No option " + OPTION_EVENT_BUS_INDEX +
                         " passed to annotation processor");
                 return false;
             }
+
             verbose = Boolean.parseBoolean(processingEnv.getOptions().get(OPTION_VERBOSE));
+
+            //org.greenrobot.eventbusperf.MyEventBusIndex
             int lastPeriod = index.lastIndexOf('.');
+            //org.greenrobot.eventbusperf
             String indexPackage = lastPeriod != -1 ? index.substring(0, lastPeriod) : null;
 
             round++;
@@ -94,6 +116,7 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
                 messager.printMessage(Diagnostic.Kind.NOTE, "Processing round " + round + ", new annotations: " +
                         !annotations.isEmpty() + ", processingOver: " + env.processingOver());
             }
+
             if (env.processingOver()) {
                 if (!annotations.isEmpty()) {
                     messager.printMessage(Diagnostic.Kind.ERROR,
@@ -101,22 +124,31 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
                     return false;
                 }
             }
+
             if (annotations.isEmpty()) {
                 return false;
             }
 
             if (writerRoundDone) {
+                //"意外的处理状态：写入后注释仍然可用。");
                 messager.printMessage(Diagnostic.Kind.ERROR,
                         "Unexpected processing state: annotations still available after writing.");
             }
+
+
+            //收集注解
             collectSubscribers(annotations, env, messager);
+            //检查注解
             checkForSubscribersToSkip(messager, indexPackage);
 
             if (!methodsByClass.isEmpty()) {
+                //写文件
                 createInfoIndexFile(index);
+
             } else {
                 messager.printMessage(Diagnostic.Kind.WARNING, "No @Subscribe annotations found");
             }
+
             writerRoundDone = true;
         } catch (RuntimeException e) {
             // IntelliJ does not handle exceptions nicely, so log and print a message
@@ -128,11 +160,15 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
 
     private void collectSubscribers(Set<? extends TypeElement> annotations, RoundEnvironment env, Messager messager) {
         for (TypeElement annotation : annotations) {
+            //
             Set<? extends Element> elements = env.getElementsAnnotatedWith(annotation);
             for (Element element : elements) {
+                //ExecutableElement 可执行元素指的是方法类型
                 if (element instanceof ExecutableElement) {
                     ExecutableElement method = (ExecutableElement) element;
+                    //检查方法:正好只有一个参数的非静态公开方法
                     if (checkHasNoErrors(method, messager)) {
+                        //获取方法所在的类元素
                         TypeElement classElement = (TypeElement) method.getEnclosingElement();
                         methodsByClass.putElement(classElement, method);
                     }
@@ -142,6 +178,11 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
             }
         }
     }
+
+    //检查方法:正好只有一个参数的非静态公开方法
+    //Subscriber method must not be static
+    //Subscriber method must be public
+    //Subscriber method must have exactly 1 parameter
 
     private boolean checkHasNoErrors(ExecutableElement element, Messager messager) {
         if (element.getModifiers().contains(Modifier.STATIC)) {
@@ -163,19 +204,24 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
     }
 
     /**
+     * 如果订阅者类或任何涉及的事件类对索引不可见，则应跳过订阅者类。
      * Subscriber classes should be skipped if their class or any involved event class are not visible to the index.
      */
     private void checkForSubscribersToSkip(Messager messager, String myPackage) {
+        //遍历所有订阅者方法
         for (TypeElement skipCandidate : methodsByClass.keySet()) {
-            TypeElement subscriberClass = skipCandidate;
-            while (subscriberClass != null) {
+            //方法所在的类，
+            TypeElement subscriberClass = skipCandidate; //递归获取父类
+            while (subscriberClass != null) {//所有观察者
                 if (!isVisible(myPackage, subscriberClass)) {
+                    //索引类访问不到观察者类，跳过
                     boolean added = classesToSkip.add(skipCandidate);
-                    if (added) {
+                    if (added) {//存在不可访问观察者
                         String msg;
-                        if (subscriberClass.equals(skipCandidate)) {
+                        //由于类不是公开的，所以回退到反射
+                        if (subscriberClass.equals(skipCandidate)) { //没有继承关系存在
                             msg = "Falling back to reflection because class is not public";
-                        } else {
+                        } else { //父类
                             msg = "Falling back to reflection because " + skipCandidate +
                                     " has a non-public super class";
                         }
@@ -183,18 +229,23 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
                     }
                     break;
                 }
+                //观察者中的观察方法
                 List<ExecutableElement> methods = methodsByClass.get(subscriberClass);
+
                 if (methods != null) {
                     for (ExecutableElement method : methods) {
                         String skipReason = null;
+                        //方法第一个参数
                         VariableElement param = method.getParameters().get(0);
+                        //参数类型
                         TypeMirror typeMirror = getParamTypeMirror(param, messager);
-                        if (!(typeMirror instanceof DeclaredType) ||
-                                !(((DeclaredType) typeMirror).asElement() instanceof TypeElement)) {
+                        //不是类类型
+                        if (!(typeMirror instanceof DeclaredType) || !(((DeclaredType) typeMirror).asElement() instanceof TypeElement)) {
                             skipReason = "event type cannot be processed";
                         }
                         if (skipReason == null) {
                             TypeElement eventTypeElement = (TypeElement) ((DeclaredType) typeMirror).asElement();
+                            //参数类对索引类不可见
                             if (!isVisible(myPackage, eventTypeElement)) {
                                 skipReason = "event type is not public";
                             }
@@ -212,6 +263,7 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
                         }
                     }
                 }
+                //获取观察者类的父类
                 subscriberClass = getSuperclass(subscriberClass);
             }
         }
@@ -219,7 +271,7 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
 
     private TypeMirror getParamTypeMirror(VariableElement param, Messager messager) {
         TypeMirror typeMirror = param.asType();
-        // Check for generic type
+        // Check for generic type 检查泛型类型
         if (typeMirror instanceof TypeVariable) {
             TypeMirror upperBound = ((TypeVariable) typeMirror).getUpperBound();
             if (upperBound instanceof DeclaredType) {
@@ -233,11 +285,17 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
         return typeMirror;
     }
 
+    /**
+     * 父类
+     * @param type
+     * @return
+     */
     private TypeElement getSuperclass(TypeElement type) {
         if (type.getSuperclass().getKind() == TypeKind.DECLARED) {
             TypeElement superclass = (TypeElement) processingEnv.getTypeUtils().asElement(type.getSuperclass());
             String name = superclass.getQualifiedName().toString();
             if (name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("android.")) {
+                //跳过系统类，降低性能
                 // Skip system classes, this just degrades performance
                 return null;
             } else {
@@ -340,7 +398,10 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
             writer.write("    private static final Map<Class<?>, SubscriberInfo> SUBSCRIBER_INDEX;\n\n");
             writer.write("    static {\n");
             writer.write("        SUBSCRIBER_INDEX = new HashMap<Class<?>, SubscriberInfo>();\n\n");
+
             writeIndexLines(writer, myPackage);
+
+
             writer.write("    }\n\n");
             writer.write("    private static void putIndex(SubscriberInfo info) {\n");
             writer.write("        SUBSCRIBER_INDEX.put(info.getSubscriberClass(), info);\n");
@@ -369,7 +430,10 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
     }
 
     private void writeIndexLines(BufferedWriter writer, String myPackage) throws IOException {
+
         for (TypeElement subscriberTypeElement : methodsByClass.keySet()) {
+            //只生成可访问的
+
             if (classesToSkip.contains(subscriberTypeElement)) {
                 continue;
             }
@@ -388,7 +452,14 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
         }
     }
 
+    /**
+     * 类对索引类包是否可访问
+     * @param myPackage
+     * @param typeElement
+     * @return
+     */
     private boolean isVisible(String myPackage, TypeElement typeElement) {
+        //类的修饰符
         Set<Modifier> modifiers = typeElement.getModifiers();
         boolean visible;
         if (modifiers.contains(Modifier.PUBLIC)) {
@@ -396,10 +467,14 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
         } else if (modifiers.contains(Modifier.PRIVATE) || modifiers.contains(Modifier.PROTECTED)) {
             visible = false;
         } else {
+            //类所在的包
             String subscriberPackage = getPackageElement(typeElement).getQualifiedName().toString();
+            //处理器参数没有指定索引类
             if (myPackage == null) {
+                //todo 没有包名什么情况
                 visible = subscriberPackage.length() == 0;
             } else {
+                //索引类和观察者包名一样
                 visible = myPackage.equals(subscriberPackage);
             }
         }

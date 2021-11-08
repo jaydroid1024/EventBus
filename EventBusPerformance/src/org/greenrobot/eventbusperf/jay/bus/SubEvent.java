@@ -6,6 +6,5 @@ package org.greenrobot.eventbusperf.jay.bus;
  * @date 6/11/21
  */
 public class SubEvent<T extends String> {
-
     public T msg;
 }

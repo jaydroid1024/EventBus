@@ -9,19 +9,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:onClick="btnGo"
-        android:text="跳转到2" />
+        android:text="跳转到3" />
 
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:onClick="btnSendOnMain"
-        android:text="btnSendOnMain" />
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:onClick="btnSendOnThread"
-        android:text="btnSendOnThread" />
 
     <TextView
         android:id="@+id/tv_sub"

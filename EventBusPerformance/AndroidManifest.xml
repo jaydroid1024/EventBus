@@ -7,21 +7,26 @@
         android:required="false" />
 
     <application
+        android:name=".jay.bus.App"
         android:icon="@drawable/ic_launcher"
-        android:label="@string/app_name" >
+        android:label="@string/app_name">
         <activity
-            android:name="org.greenrobot.eventbusperf.TestSetupActivity"
-            android:label="@string/app_name" >
+            android:name=".jay.bus.BusTestActivity"
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity
             android:name="org.greenrobot.eventbusperf.TestRunnerActivity"
             android:label="@string/app_name"
-            android:process="de.greenrobot.eventperf.benchmark" >
-        </activity>
+            android:process="de.greenrobot.eventperf.benchmark"></activity>
+
+        <activity android:name=".jay.bus.BusTest2Activity" />
+        <activity android:name=".jay.bus.BusTest3Activity" />
+
     </application>
 
 </manifest>
