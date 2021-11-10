@@ -1,12 +1,13 @@
 package org.greenrobot.eventbusperf.jay.bus
 
 import android.app.Application
-import com.example.myapp.MyEventBusIndex
+//import com.example.myapp.MyEventBusIndex
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import org.greenrobot.eventbus.util.AsyncExecutor
 import org.greenrobot.eventbus.util.ThrowableFailureEvent
+import org.greenrobot.eventbusperf.MyEventBusIndex
 
 
 /**
@@ -27,9 +28,11 @@ class App : Application() {
             .installDefaultEventBus()
 
         //创建一个新实例并配置索引类
-        val eventBus = EventBus.builder().addIndex(MyEventBusIndex()).build()
+//        val eventBus = EventBus.builder().addIndex(MyEventBusIndex()).build()
         //使用单例模式并配置索引类
-        EventBus.builder().addIndex(MyEventBusIndex()).installDefaultEventBus()
+        EventBus.builder()
+            .addIndex(MyEventBusIndex())
+            .installDefaultEventBus()
         // Now the default instance uses the given index. Use it like this:
 //        val eventBus = EventBus.getDefault()
 

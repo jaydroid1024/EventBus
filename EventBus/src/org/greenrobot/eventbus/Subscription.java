@@ -22,6 +22,7 @@ final class Subscription {
      * Becomes false as soon as {@link EventBus#unregister(Object)} is called, which is checked by queued event delivery
      * {@link EventBus#invokeSubscriber(PendingPost)} to prevent race conditions.
      */
+    //调用EventBus.unregister(Object)立即变为 false，由排队的事件传递EventBus.invokeSubscriber(PendingPost)以防止竞争条件。
     volatile boolean active;
 
     Subscription(Object subscriber, SubscriberMethod subscriberMethod) {
