@@ -18,14 +18,14 @@ package org.greenrobot.eventbus.meta;
 import org.greenrobot.eventbus.ThreadMode;
 
 public class SubscriberMethodInfo {
+
     final String methodName;
     final ThreadMode threadMode;
     final Class<?> eventType;
     final int priority;
     final boolean sticky;
 
-    public SubscriberMethodInfo(String methodName, Class<?> eventType, ThreadMode threadMode,
-                                int priority, boolean sticky) {
+    public SubscriberMethodInfo(String methodName, Class<?> eventType, ThreadMode threadMode, int priority, boolean sticky) {
         this.methodName = methodName;
         this.threadMode = threadMode;
         this.eventType = eventType;

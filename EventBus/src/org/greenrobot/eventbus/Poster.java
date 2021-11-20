@@ -23,6 +23,7 @@ package org.greenrobot.eventbus;
 interface Poster {
 
     /**
+     * 将要为特定订阅发布的事件排入队列。
      * Enqueue an event to be posted for a particular subscription.
      *
      * @param subscription Subscription which will receive the event.

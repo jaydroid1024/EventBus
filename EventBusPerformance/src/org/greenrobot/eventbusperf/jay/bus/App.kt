@@ -1,13 +1,12 @@
 package org.greenrobot.eventbusperf.jay.bus
 
 import android.app.Application
-//import com.example.myapp.MyEventBusIndex
+import com.example.myapp.MyEventBusIndex
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import org.greenrobot.eventbus.util.AsyncExecutor
 import org.greenrobot.eventbus.util.ThrowableFailureEvent
-import org.greenrobot.eventbusperf.MyEventBusIndex
 
 
 /**
@@ -16,8 +15,31 @@ import org.greenrobot.eventbusperf.MyEventBusIndex
  * @date 2021/11/8
  */
 class App : Application() {
+
     override fun onCreate() {
         super.onCreate()
+//        构建 EventBus 实例的三种方式：
+//         1. EventBus.getDefault() + 默认配置
+//         2. EventBus.builder().installDefaultEventBus() + 自定义配置
+//         3. EventBus.builder().build() + 自定义配置
+
+        EventBus.builder()
+            .throwSubscriberException(false)
+            .logNoSubscriberMessages(true)
+            //添加索引类，减少运行时反射
+            .addIndex(MyEventBusIndex())
+            .build()
+
+        EventBus.builder()
+            .throwSubscriberException(false)
+            .logNoSubscriberMessages(true)
+            //添加索引类，减少运行时反射
+//            .addIndex(MyEventBusIndex())
+//            .installDefaultEventBus()
+
+        EventBus()
+
+
         EventBus.builder()
             //将此与 BuildConfig.DEBUG 一起使用可让应用程序尽在在 DEBUG 模式下崩溃。默认为false
             // 这样就不会在开发过程中错过异常（Invoking subscriber failed）
@@ -25,13 +47,14 @@ class App : Application() {
             //如果发送了没有订阅者的event,是否需要打印提示哪一个 event bean 的log,默认为true
             //提示信息： No subscribers registered for event class org.greenrobot.eventbusperf.jay.bus.SubEvent
             .logNoSubscriberMessages(true)
-            .installDefaultEventBus()
+            .build()
 
         //创建一个新实例并配置索引类
 //        val eventBus = EventBus.builder().addIndex(MyEventBusIndex()).build()
         //使用单例模式并配置索引类
         EventBus.builder()
-            .addIndex(MyEventBusIndex())
+            //添加索引类，减少运行时反射
+//            .addIndex(MyEventBusIndex())
             .installDefaultEventBus()
         // Now the default instance uses the given index. Use it like this:
 //        val eventBus = EventBus.getDefault()

@@ -40,6 +40,7 @@ public class HandlerPoster extends Handler implements Poster {
             queue.enqueue(pendingPost);
             if (!handlerActive) {
                 handlerActive = true;
+                //通过Handler 发送到主线程
                 if (!sendMessage(obtainMessage())) {
                     throw new EventBusException("Could not send handler message");
                 }

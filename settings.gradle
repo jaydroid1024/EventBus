@@ -7,4 +7,4 @@ include ':EventBusPerformance'
 
 project(":EventBus").name = "eventbus"
 project(":EventBusAnnotationProcessor").name = "eventbus-annotation-processor"
-include ':simple'
+//include ':simple'

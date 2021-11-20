@@ -41,6 +41,7 @@ public interface MainThreadSupport {
 
         @Override
         public Poster createPoster(EventBus eventBus) {
+            //将要为特定订阅发布的事件排入队列。
             return new HandlerPoster(eventBus, looper, 10);
         }
     }

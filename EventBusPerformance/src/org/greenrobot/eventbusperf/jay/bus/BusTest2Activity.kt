@@ -37,6 +37,7 @@ class BusTest2Activity : Activity() {
             // 消费掉粘性事件
             EventBus.getDefault().removeStickyEvent(stickyEvent)
         }
+
         //消费粘性事件方式二：
         val stickyEvent2 = EventBus.getDefault().removeStickyEvent(MessageEvent::class.java)
         // 最好检查之前是否实际发布过事件
@@ -57,7 +58,7 @@ class BusTest2Activity : Activity() {
     @Subscribe(threadMode = ThreadMode.MAIN, sticky = true)
     fun onMessageEvent_sticky(event: MessageEvent) {
         showMsg(event, "MAIN")
-//        EventBus.getDefault().removeStickyEvent(event)
+        EventBus.getDefault().removeStickyEvent(event)
     }
 
 

@@ -31,6 +31,7 @@ final class PendingPost {
     }
 
     static PendingPost obtainPendingPost(Subscription subscription, Object event) {
+        //对象池，节省内存，减少GC,提高性能
         synchronized (pendingPostPool) {
             int size = pendingPostPool.size();
             if (size > 0) {

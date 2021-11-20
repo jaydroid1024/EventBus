@@ -66,6 +66,7 @@ import de.greenrobot.common.ListMap;
 @SupportedOptions(value = {"eventBusIndex", "verbose"})
 @IncrementalAnnotationProcessor(AGGREGATING)
 public class EventBusAnnotationProcessor extends AbstractProcessor {
+
     public static final String OPTION_EVENT_BUS_INDEX = "eventBusIndex";
     public static final String OPTION_VERBOSE = "verbose";
 
@@ -75,6 +76,7 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
     //找到一个类的订阅者方法（没有超类）。<类，类中标注了Subscriber的方法>
     /** Found subscriber methods for a class (without superclasses). */
     private final ListMap<TypeElement, ExecutableElement> methodsByClass = new ListMap<>();
+    //ArrayList<
     //对索引类不可访问的降级为反射调用观察者类，这里收集不可访问的观察者类
     private final Set<TypeElement> classesToSkip = new HashSet<>();
 
@@ -112,6 +114,10 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
             //org.greenrobot.eventbusperf
             String indexPackage = lastPeriod != -1 ? index.substring(0, lastPeriod) : null;
 
+            System.out.println("index: " + index);
+            System.out.println("verbose: " + verbose);
+            messager.printMessage(Diagnostic.Kind.NOTE, "indexPackage: " + indexPackage);
+
             round++;
             if (verbose) {
                 messager.printMessage(Diagnostic.Kind.NOTE, "Processing round " + round + ", new annotations: " +
@@ -141,7 +147,6 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
             collectSubscribers(annotations, env, messager);
             //检查注解
             checkForSubscribersToSkip(messager, indexPackage);
-
             if (!methodsByClass.isEmpty()) {
                 //生成Java文件并写入到本地文件
                 createInfoIndexFile(index);
@@ -166,11 +171,11 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
                 //ExecutableElement 可执行元素指的是方法类型
                 if (element instanceof ExecutableElement) {
                     ExecutableElement method = (ExecutableElement) element;
-                    //检查方法:正好只有一个参数的非静态的公开的方法
+                    //校验订阅者方法签名:正好只有一个参数的非静态的公开的方法
                     if (checkHasNoErrors(method, messager)) {
                         //获取方法所在的类元素
                         TypeElement classElement = (TypeElement) method.getEnclosingElement();
-                        //存入容器
+                        //存入容器 HashMap<
                         methodsByClass.putElement(classElement, method);
                     }
                 } else {
@@ -231,6 +236,7 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
                     }
                     break;
                 }
+
                 //观察者类中的所有观察方法
                 List<ExecutableElement> methods = methodsByClass.get(subscriberClass);
                 if (methods != null) {
@@ -240,11 +246,29 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
                         VariableElement param = method.getParameters().get(0);
                         //参数类型
                         TypeMirror typeMirror = getParamTypeMirror(param, messager);
-                        //不是类类型报错
+                        System.out.println("typeMirror: " + typeMirror);
+                        System.out.println("VariableElement: " + param);
+                        System.out.println("VariableElement asType: " + param.asType());
+                        //todo DeclaredType 与  TypeElement 的区别 ？？？
+                        // TypeElement: java.util.Set;
+                        // DeclaredType:java.util.Set<String>和java.util.Set<Number>
+                        //DeclaredType: 表示声明的类型，类类型或接口类型。 这包括参数化类型，例如java.util.Set<String>以及原始类型。
+                        //TypeElement表示类或接口元素，而DeclaredType表示类或接口类型，后者是前者的使用（或调用）
+
+                        //TypeElement：表示一个类或接口程序元素。 提供对有关类型及其成员的信息的访问。 请注意，枚举类型是一种类，注释类型是一种接口。
+                        //TypeElement表示类或接口元素，而 DeclaredType 表示类或接口类型，后者是前者的使用（或调用）。
+                        // 泛型类型的区别最为明显，对于泛型类型，单个元素可以定义整个类型系列。
+                        // 例如，元素java.util.Set对应于参数化类型java.util.Set<String>和java.util.Set<Number> （以及许多其他），以及原始类型java.util.Set
+                        //订阅者方法的参数类型不是 DeclaredType 或者是 DeclaredType 但不是 TypeElement
                         if (!(typeMirror instanceof DeclaredType) || !(((DeclaredType) typeMirror).asElement() instanceof TypeElement)) {
                             skipReason = "event type cannot be processed";
                         }
-                        //是类类型但是对索引类不可见
+
+                        Element e=((DeclaredType) typeMirror).asElement();
+                        System.out.println("asElement:" + e);
+                        System.out.println("(typeMirror instanceof DeclaredType): " + (typeMirror instanceof DeclaredType));
+                        System.out.println("(((DeclaredType) typeMirror).asElement() instanceof TypeElement) " + (((DeclaredType) typeMirror).asElement() instanceof TypeElement));
+                        //订阅者方法的参数类型是类类型但是对索引类不可见
                         if (skipReason == null) {
                             TypeElement eventTypeElement = (TypeElement) ((DeclaredType) typeMirror).asElement();
                             //参数类对索引类不可见
@@ -252,6 +276,7 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
                                 skipReason = "event type is not public";
                             }
                         }
+
                         //存在观察者方法但是不可见先存下来，用于过滤
                         if (skipReason != null) {
                             boolean added = classesToSkip.add(skipCandidate);
@@ -266,17 +291,20 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
                         }
                     }
                 }
+
                 //获取观察者类的父类，继续循环
                 subscriberClass = getSuperclass(subscriberClass);
             }
         }
     }
 
+    //
     private TypeMirror getParamTypeMirror(VariableElement param, Messager messager) {
         TypeMirror typeMirror = param.asType();
         // Check for generic type 检查泛型类型
         if (typeMirror instanceof TypeVariable) {
             TypeMirror upperBound = ((TypeVariable) typeMirror).getUpperBound();
+            System.out.println("upperBound:" + upperBound);
             if (upperBound instanceof DeclaredType) {
                 if (messager != null) {
                     messager.printMessage(Diagnostic.Kind.NOTE, "Using upper bound type " + upperBound +
@@ -354,14 +382,17 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
             List<String> parts = new ArrayList<>();
             parts.add(callPrefix + "(\"" + methodName + "\",");
             String lineEnd = "),";
+            //默认优先级非粘性事件
             if (subscribe.priority() == 0 && !subscribe.sticky()) {
                 if (subscribe.threadMode() == ThreadMode.POSTING) {
+                    //没有配置ThreadMode
                     parts.add(eventClass + lineEnd);
                 } else {
                     parts.add(eventClass + ",");
                     parts.add("ThreadMode." + subscribe.threadMode().name() + lineEnd);
                 }
             } else {
+                //配置了优先级和粘性事件
                 parts.add(eventClass + ",");
                 parts.add("ThreadMode." + subscribe.threadMode().name() + ",");
                 parts.add(subscribe.priority() + ",");
@@ -403,6 +434,7 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
             writer.write("    static {\n");
             writer.write("        SUBSCRIBER_INDEX = new HashMap<Class<?>, SubscriberInfo>();\n\n");
 
+            //根据收集到的订阅者生成
             writeIndexLines(writer, myPackage);
 
 
@@ -441,6 +473,7 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
                 continue;
             }
             String subscriberClass = getClassString(subscriberTypeElement, myPackage);
+            //todo 这里为什么还要再检查一次
             if (isVisible(myPackage, subscriberTypeElement)) {
                 writeLine(writer, 2,
                         "putIndex(new SimpleSubscriberInfo(" + subscriberClass + ".class,",
@@ -456,6 +489,7 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
 
     /**
      * 校验某个类类对索引类包是否可访问
+     * 订阅者类可访问的条件：public/default+索引类和观察者包名一样
      */
     private boolean isVisible(String myPackage, TypeElement typeElement) {
         //类的修饰符
@@ -466,11 +500,12 @@ public class EventBusAnnotationProcessor extends AbstractProcessor {
         } else if (modifiers.contains(Modifier.PRIVATE) || modifiers.contains(Modifier.PROTECTED)) {
             visible = false;
         } else {
-            //类所在的包
+            //访问修饰符为默认包访问级别
+            //订阅者类所在的包
             String subscriberPackage = getPackageElement(typeElement).getQualifiedName().toString();
             //处理器参数没有指定索引类
             if (myPackage == null) {
-                //todo 没有包名什么情况
+                //todo 没有包名什么情况，经过测试不存在这种情况，只配置 eventBusIndex: 'MyEventBusIndex',是会报错的
                 visible = subscriberPackage.length() == 0;
             } else {
                 //索引类和观察者包名一样

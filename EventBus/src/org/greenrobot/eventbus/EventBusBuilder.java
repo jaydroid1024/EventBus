@@ -31,6 +31,7 @@ import java.util.concurrent.Executors;
  */
 @SuppressWarnings("unused")
 public class EventBusBuilder {
+
     private final static ExecutorService DEFAULT_EXECUTOR_SERVICE = Executors.newCachedThreadPool();
 
     boolean logSubscriberExceptions = true;
@@ -75,6 +76,9 @@ public class EventBusBuilder {
     }
 
     /**
+     * 如果订阅者抛出异常（默认值：false），则失败。
+     *
+     * 提示：将此与 BuildConfig.DEBUG 一起使用可让应用程序在 DEBUG 模式下崩溃（仅限）。 这样，您就不会在开发过程中错过异常
      * Fails if an subscriber throws an exception (default: false).
      * <p/>
      * Tip: Use this with BuildConfig.DEBUG to let the app crash in DEBUG mode (only). This way, you won't miss
@@ -86,6 +90,9 @@ public class EventBusBuilder {
     }
 
     /**
+     * 默认情况下，EventBus 考虑事件类层次结构（将通知订阅者的父类）。 关闭此功能将改进事件的发布。 对于直接扩展 Object 的简单事件类，我们测得事件发布速度提高了 20%。 对于更复杂的事件层次结构，加速应该大于 20%。
+     *
+     * 但是，请记住，事件发布通常只消耗应用程序内一小部分 CPU 时间，除非它以高速率发布，例如每秒数百/数千个事件。
      * By default, EventBus considers the event class hierarchy (subscribers to super classes will be notified).
      * Switching this feature off will improve posting of events. For simple event classes extending Object directly,
      * we measured a speed up of 20% for event posting. For more complex event hierarchies, the speed up should be
@@ -122,6 +129,7 @@ public class EventBusBuilder {
         return this;
     }
 
+    //即使有生成的索引也强制使用反射（默认值：false）。
     /** Forces the use of reflection even if there's a generated index (default: false). */
     public EventBusBuilder ignoreGeneratedIndex(boolean ignoreGeneratedIndex) {
         this.ignoreGeneratedIndex = ignoreGeneratedIndex;
@@ -165,9 +173,11 @@ public class EventBusBuilder {
     MainThreadSupport getMainThreadSupport() {
         if (mainThreadSupport != null) {
             return mainThreadSupport;
-        } else if (AndroidLogger.isAndroidLogAvailable()) {
+        } else if (AndroidLogger.isAndroidLogAvailable()) { // 通过反射log类判断是否抛异常
+            //获取Android 主线程Looper
             Object looperOrNull = getAndroidMainLooperOrNull();
             return looperOrNull == null ? null :
+                    //
                     new MainThreadSupport.AndroidHandlerMainThreadSupport((Looper) looperOrNull);
         } else {
             return null;

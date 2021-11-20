@@ -9,6 +9,9 @@ import android.widget.TextView
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import org.greenrobot.eventbus.jay_test.myeventbus.MyEventBus
+import org.greenrobot.eventbus.jay_test.myeventbus.MySubscribe
+import org.greenrobot.eventbus.jay_test.myeventbus.MyThreadMode
 import org.greenrobot.eventbusperf.R
 import kotlin.concurrent.thread
 
@@ -29,14 +32,44 @@ class BusTestActivity : Activity() {
     public override fun onStart() {
         super.onStart()
         EventBus.getDefault().register(this)
+        MyEventBus.getInstance().register(this)
     }
 
     public override fun onStop() {
         super.onStop()
         EventBus.getDefault().unregister(this)
+        MyEventBus.getInstance().unregister(this)
+
     }
 
-    @Subscribe(threadMode = ThreadMode.POSTING, priority = 2)
+    //java.lang.ClassCastException: com.sun.tools.javac.code.Type$JCPrimitiveType cannot be cast to javax.lang.model.type.DeclaredType
+//    @Subscribe(sticky = true, threadMode = ThreadMode.POSTING, priority = 2)
+//    fun test1(event: Int) {
+//
+//    }
+
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.POSTING, priority = 2)
+    fun test2(event: () -> Unit) {
+    }
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.POSTING, priority = 2)
+    fun test3(event: List<String>) {
+    }
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.POSTING, priority = 2)
+    fun test4(event: List<Boolean>) {
+    }
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.POSTING, priority = 2)
+    fun test5(event: HashMap<String, Boolean>) {
+    }
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.POSTING, priority = 2)
+    fun test6(event: HashMap<String, MessageEvent>) {
+    }
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.POSTING, priority = 2)
     fun onMessageEvent_POSTING1(event: MessageEvent) {
         showMsg(event, "POSTING1")
     }
@@ -49,6 +82,8 @@ class BusTestActivity : Activity() {
     @Subscribe(threadMode = ThreadMode.MAIN, priority = 3)
     fun onMessageEvent_MAIN2(event: MessageEvent) {
         showMsg(event, "MAIN2")
+        // 取消事件向下传递
+        EventBus.getDefault().cancelEventDelivery(event)
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN_ORDERED)
@@ -88,6 +123,20 @@ class BusTestActivity : Activity() {
         }
         textView!!.append("\nbtnSendOnThread-end")
 
+    }
+
+    fun btnMyEventBus(view: View?) {
+        textView!!.append("\nbtnMyEventBus-start")
+
+        MyEventBus.getInstance().post(MessageEvent(Thread.currentThread().name))
+
+        textView!!.append("\nbtnMyEventBus-end")
+
+    }
+
+    @MySubscribe()
+    fun onMessageEvent(event: MessageEvent) {
+        textView!!.append("\nonMessageEvent 收到了")
     }
 
 
