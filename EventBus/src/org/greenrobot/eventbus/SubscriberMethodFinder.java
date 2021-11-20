@@ -79,6 +79,15 @@ class SubscriberMethodFinder {
         }
     }
 
+    //官方说的使用索引类的优势：
+    //使用订阅者索引可以避免在运行时使用反射对订阅者方法进行昂贵的查找。相反，EventBus 注释处理器在构建时查找它们。
+    //建议Android应用程序在生产环境使用索引类方式。它更快并避免由于反射而导致的崩溃。
+
+    //todo EventBus 索引类并不是避免反射而只是避免反射过程中对所有方法的查找，因为索引类中存放的一定是有效的订阅者方法，
+    // 而反射的方式是反射订阅者类的所有方法再过滤订阅者方法，甚至还会反射整个派生系中的方法再过滤。
+    // 所以索引类的优势只有在订阅者类中非订阅者方法比较多时才会发挥他的优势，比如 Activity类：继承层次多，方法多，这种情况采用索引类的方式会比较快,
+    // 如果一个订阅者类中只有订阅者方法，那两种方式的查找效率是一样的。
+
     private List<SubscriberMethod> findUsingInfo(Class<?> subscriberClass) {
         FindState findState = prepareFindState();
         findState.initForSubscriber(subscriberClass);
@@ -86,6 +95,7 @@ class SubscriberMethodFinder {
             //通过订阅者类从apt生成的索引类中查找订阅者方法信息:subscriberInfo
             findState.subscriberInfo = getSubscriberInfo(findState);
             if (findState.subscriberInfo != null) {
+                //通过反射获取订阅者的 Method 对象并封装 SubscriberMethod 数组
                 SubscriberMethod[] array = findState.subscriberInfo.getSubscriberMethods();
                 for (SubscriberMethod subscriberMethod : array) {
                     // 检查重名方法（本类或父类之间都可能重复
@@ -135,6 +145,7 @@ class SubscriberMethodFinder {
     //
     private SubscriberInfo getSubscriberInfo(FindState findState) {
 
+        //findState 中是否缓存
         if (findState.subscriberInfo != null && findState.subscriberInfo.getSuperSubscriberInfo() != null) {
             SubscriberInfo superclassInfo = findState.subscriberInfo.getSuperSubscriberInfo();
             if (findState.clazz == superclassInfo.getSubscriberClass()) {
@@ -219,7 +230,6 @@ class SubscriberMethodFinder {
             //校验订阅者方法：must be public, non-static, and non-abstract"
             //
             if ((modifiers & Modifier.PUBLIC) != 0 && (modifiers & MODIFIERS_IGNORE) == 0) {
-
                 Class<?>[] parameterTypes = method.getParameterTypes();//参数类型
                 if (parameterTypes.length == 1) {//正好一个参数
                     Subscribe subscribeAnnotation = method.getAnnotation(Subscribe.class);
